@@ -7,6 +7,7 @@ import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.StandardCopyOption;
+import java.util.Collections;
 import java.util.List;
 
 import java.awt.dnd.*;
@@ -22,6 +23,7 @@ public class DirectoryTreePanel {
 	private File copiedOrCutFile = null; // Variable pour stocker le fichier copié ou coupé
 	private boolean isCutFile = false; // Variable pour savoir si le fichier est coupé
 	private DefaultMutableTreeNode hoveredNode = null;
+    private Clipboard clipboard = Toolkit.getDefaultToolkit().getSystemClipboard();
 
 	public DirectoryTreePanel(FileExplorer explorer) {
 		this.fileExplorer = explorer;
@@ -57,56 +59,47 @@ public class DirectoryTreePanel {
 
 		// Le reste de ton code continue ici...
 
-		// Ajout du MouseListener pour afficher les menus contextuels
-		tree.addMouseListener(new MouseAdapter() {
-			public void mouseClicked(MouseEvent e) {
-				if (e.getButton() == MouseEvent.BUTTON3) { // Détecter le clic droit
-					TreePath path = tree.getPathForLocation(e.getX(), e.getY());
-					if (path != null) {
-						DefaultMutableTreeNode selectedNode = (DefaultMutableTreeNode) path.getLastPathComponent();
-						File selectedFile = (File) selectedNode.getUserObject();
-
-						JPopupMenu popupMenu = createPopupMenu(selectedFile);
-						popupMenu.show(tree, e.getX(), e.getY());
-					}
-				}
-			}
-		});
-
 		scrollPane = new JScrollPane(tree);
 		scrollPane.setPreferredSize(new Dimension(250, 0));
 
-		// Listener pour double-clics sur les noeuds de l'arborescence
+		// Listener pour un clic simple sur les noeuds de l'arborescence
+//	// Supprimez les deux MouseListener existants et remplacez-les par le code suivant :
 		tree.addMouseListener(new MouseAdapter() {
-			@Override
-			public void mouseClicked(MouseEvent e) {
-				TreePath path = tree.getPathForLocation(e.getX(), e.getY());
+		    @Override
+		    public void mouseClicked(MouseEvent e) {
+		        TreePath path = tree.getPathForLocation(e.getX(), e.getY());
 
-				if (path != null) {
-					DefaultMutableTreeNode selectedNode = (DefaultMutableTreeNode) path.getLastPathComponent();
-					Object userObject = selectedNode.getUserObject();
+		        // Vérifier si le clic est sur un nœud de l'arbre
+		        if (path != null) {
+		            DefaultMutableTreeNode selectedNode = (DefaultMutableTreeNode) path.getLastPathComponent();
+		            Object userObject = selectedNode.getUserObject();
 
-					// Vérification du double-clic
-					if (e.getClickCount() == 2) {
-						// Vérifier si le double-clic est sur la racine "PC"
-						if ("PC".equals(userObject)) {
-							JOptionPane.showMessageDialog(null, "Double-clic sur la racine PC !");
-							fileExplorer.showDirectoryContent(null); // Action spécifique pour la racine
-						}
-						// Vérifier si c'est un fichier ou un dossier
-						else if (userObject instanceof File) {
-							File selectedFile = (File) userObject;
-							if (selectedFile.isDirectory()) {
-								fileExplorer.navigateTo(selectedFile); // Navigation vers le dossier
-							} else {
-								// Optionnel : Vous pouvez ajouter une logique pour ouvrir un fichier
-								openFile(selectedFile);
-							}
-						}
-					}
-				}
-			}
+		            // Gérer le clic droit
+		            if (SwingUtilities.isRightMouseButton(e)) {
+		                if (userObject instanceof File) {
+		                    File selectedFile = (File) userObject;
+		                    JPopupMenu popupMenu = createPopupMenu(selectedFile);
+		                    popupMenu.show(tree, e.getX(), e.getY());
+		                }
+		            }
+		            // Gérer le clic simple
+		            else if (SwingUtilities.isLeftMouseButton(e) && e.getClickCount() == 1) {
+		                if ("PC".equals(userObject)) {
+		                    fileExplorer.showDirectoryContent(null); // Action spécifique pour la racine "PC"
+		                } else if (userObject instanceof File) {
+		                    File selectedFile = (File) userObject;
+		                    if (selectedFile.isDirectory()) {
+		                        fileExplorer.navigateTo(selectedFile); // Navigation vers le dossier
+		                    } else {
+		                        openFile(selectedFile); // Ouvrir le fichier si ce n'est pas un dossier
+		                    }
+		                }
+		            }
+		        }
+		    }
 		});
+
+
 
 		// Listener pour détection de survol
 		tree.addMouseMotionListener(new MouseMotionAdapter() {
@@ -194,6 +187,23 @@ public class DirectoryTreePanel {
 			JMenuItem renameItem = new JMenuItem("Renommer");
 			renameItem.addActionListener(e -> renameFile(selectedFile));
 			popupMenu.add(renameItem);
+			
+			  // Copier
+	        JMenuItem copyItem = new JMenuItem("Copier");
+	        copyItem.addActionListener(e -> copyFileToClipboard(selectedFile, false));
+	        popupMenu.add(copyItem);
+
+	        // Couper
+	        JMenuItem cutItem = new JMenuItem("Couper");
+	        cutItem.addActionListener(e -> copyFileToClipboard(selectedFile, true));
+	        popupMenu.add(cutItem);
+
+
+	        // Coller
+	        JMenuItem pasteItem = new JMenuItem("Coller");
+	        pasteItem.addActionListener(e -> pasteFileFromClipboard(selectedFile));
+	        pasteItem.setEnabled(isPasteAvailable()); // Activer si un fichier est dans le presse-papiers
+	        popupMenu.add(pasteItem);
 
 			JMenuItem deleteItem = new JMenuItem("Supprimer");
 			deleteItem.addActionListener(e -> deleteFile(selectedFile));
@@ -208,6 +218,27 @@ public class DirectoryTreePanel {
 			JMenuItem openItem = new JMenuItem("Ouvrir");
 			openItem.addActionListener(e -> openFile(selectedFile));
 			popupMenu.add(openItem);
+			
+			JMenuItem renameItem = new JMenuItem("Renommer");
+			renameItem.addActionListener(e -> renameFile(selectedFile));
+			popupMenu.add(renameItem);
+			
+			  // Copier
+	        JMenuItem copyItem = new JMenuItem("Copier");
+	        copyItem.addActionListener(e -> copyFileToClipboard(selectedFile, false));
+	        popupMenu.add(copyItem);
+
+	        // Couper
+	        JMenuItem cutItem = new JMenuItem("Couper");
+	        cutItem.addActionListener(e -> copyFileToClipboard(selectedFile, true));
+	        popupMenu.add(cutItem);
+
+
+	        // Coller
+	        JMenuItem pasteItem = new JMenuItem("Coller");
+	        pasteItem.addActionListener(e -> pasteFileFromClipboard(selectedFile));
+	        pasteItem.setEnabled(isPasteAvailable()); // Activer si un fichier est dans le presse-papiers
+	        popupMenu.add(pasteItem);
 
 			JMenuItem deleteItem = new JMenuItem("Supprimer");
 			deleteItem.addActionListener(e -> deleteFile(selectedFile));
@@ -218,54 +249,49 @@ public class DirectoryTreePanel {
 			popupMenu.add(propertiesItem);
 		}
 
-		// Action "Copier"
-		JMenuItem copyItem = new JMenuItem("Copier");
-		copyItem.addActionListener(e -> {
-			copiedOrCutFile = selectedFile;
-			isCutFile = false; // L'utilisateur a copié, donc isCutFile est faux
-		});
-		popupMenu.add(copyItem);
-
-		// Action "Couper"
-		JMenuItem cutItem = new JMenuItem("Couper");
-		cutItem.addActionListener(e -> {
-			copiedOrCutFile = selectedFile;
-			isCutFile = true; // L'utilisateur a coupé, donc isCutFile est vrai
-		});
-		popupMenu.add(cutItem);
-
-		// Action "Coller"
-		JMenuItem pasteItem = new JMenuItem("Coller");
-		pasteItem.setEnabled(copiedOrCutFile != null); // Activer l'option "Coller" uniquement si un fichier est copié
-														// ou coupé
-		pasteItem.addActionListener(e -> {
-			if (copiedOrCutFile != null) {
-				File destination = selectedFile; // Le dossier où coller
-				File target = new File(destination, copiedOrCutFile.getName());
-
-				try {
-					if (Files.exists(target.toPath())) {
-						// Si le fichier existe déjà, il est écrasé
-						Files.copy(copiedOrCutFile.toPath(), target.toPath(), StandardCopyOption.REPLACE_EXISTING);
-					} else {
-						// Si c'est un couper, on déplace le fichier
-						if (isCutFile) {
-							Files.move(copiedOrCutFile.toPath(), target.toPath(), StandardCopyOption.REPLACE_EXISTING);
-						} else {
-							// Sinon, on le copie
-							Files.copy(copiedOrCutFile.toPath(), target.toPath(), StandardCopyOption.REPLACE_EXISTING);
-						}
-					}
-					refreshTree(); // Rafraîchir l'arborescence après le collage
-				} catch (IOException ex) {
-					JOptionPane.showMessageDialog(null, "Erreur lors du collage du fichier.");
-				}
-			}
-		});
-		popupMenu.add(pasteItem);
 
 		return popupMenu;
 	}
+	
+	
+
+	private boolean isPasteAvailable() {
+        return clipboard.isDataFlavorAvailable(DataFlavor.javaFileListFlavor);
+    }
+
+
+
+	private void pasteFileFromClipboard(File destinationDir) {
+	    if (clipboard.isDataFlavorAvailable(DataFlavor.javaFileListFlavor)) {
+	        try {
+	            Transferable clipboardContent = clipboard.getContents(null);
+	            List<File> files = (List<File>) clipboardContent.getTransferData(DataFlavor.javaFileListFlavor);
+	            File fileToPaste = files.get(0); // Prend le premier fichier seulement
+
+	            // Check if we have a cut operation or copy
+	            boolean isCutOperation = clipboardContent instanceof FileTransferable && ((FileTransferable) clipboardContent).isCut();
+
+	            File target = new File(destinationDir, fileToPaste.getName());
+	            if (isCutOperation) {
+	                Files.move(fileToPaste.toPath(), target.toPath(), StandardCopyOption.REPLACE_EXISTING);
+	            } else {
+	                Files.copy(fileToPaste.toPath(), target.toPath(), StandardCopyOption.REPLACE_EXISTING);
+	            }
+	            refreshTree(); // Rafraîchit l'arborescence après le collage
+
+	        } catch (Exception ex) {
+	            JOptionPane.showMessageDialog(null, "Erreur lors du collage du fichier.");
+	        }
+	    } else {
+	        JOptionPane.showMessageDialog(null, "Aucun fichier à coller.");
+	    }
+	}
+
+
+    private void copyFileToClipboard(File file, boolean isCut) {
+        FileTransferable transferable = new FileTransferable(file, isCut);
+        clipboard.setContents(transferable, null);
+    }
 
 	// Méthode pour créer un nouveau dossier
 	private void createNewFolder(File parentDirectory) {
@@ -282,15 +308,26 @@ public class DirectoryTreePanel {
 
 	// Méthode pour renommer un fichier
 	private void renameFile(File file) {
-		String newName = JOptionPane.showInputDialog("Nouveau nom:");
-		if (newName != null && !newName.trim().isEmpty()) {
-			File newFile = new File(file.getParent(), newName);
-			if (file.renameTo(newFile)) {
-				refreshTree(); // Rafraîchir l'arborescence
-			} else {
-				JOptionPane.showMessageDialog(null, "Échec du renommage.");
-			}
-		}
+	    String originalName = file.getName();
+	    int lastDotIndex = originalName.lastIndexOf(".");
+	    
+	    // Récupération de l'extension du fichier, ou chaîne vide si aucun point n'est trouvé
+	    String extension = (lastDotIndex != -1) ? originalName.substring(lastDotIndex) : "";
+
+	    String newName = JOptionPane.showInputDialog("Nouveau nom:");
+	    if (newName != null && !newName.trim().isEmpty()) {
+	        // Vérifie si le nouveau nom contient déjà une extension, sinon ajoute l'extension d'origine
+	        if (!newName.contains(".")) {
+	            newName += extension;
+	        }
+	        
+	        File newFile = new File(file.getParent(), newName);
+	        if (file.renameTo(newFile)) {
+	            refreshTree(); // Rafraîchir l'arborescence
+	        } else {
+	            JOptionPane.showMessageDialog(null, "Échec du renommage.");
+	        }
+	    }
 	}
 
 	// Méthode pour supprimer un fichier
@@ -424,48 +461,73 @@ public class DirectoryTreePanel {
 
 
 	// Classe pour gérer le transfert des fichiers (glissement)
+	// Classe pour gérer le transfert des fichiers (glissement)
 	private class FileTransferHandler extends TransferHandler {
-		@Override
-		public int getSourceActions(JComponent c) {
-			return TransferHandler.MOVE; // Définir l'action de glissement comme un déplacement
-		}
+	    @Override
+	    public int getSourceActions(JComponent c) {
+	        return TransferHandler.COPY_OR_MOVE; // Autorise le glissement en copie ou en déplacement
+	    }
 
-		@Override
-		protected Transferable createTransferable(JComponent c) {
-			JTree tree = (JTree) c;
-			TreePath selectedPath = tree.getSelectionPath();
-			if (selectedPath != null) {
-				DefaultMutableTreeNode selectedNode = (DefaultMutableTreeNode) selectedPath.getLastPathComponent();
-				File file = (File) selectedNode.getUserObject();
-				return new FileTransferable(file); // Créer un objet transférable pour le fichier
-			}
-			return null;
-		}
+	    @Override
+	    protected Transferable createTransferable(JComponent c) {
+	        JTree tree = (JTree) c;
+	        TreePath selectedPath = tree.getSelectionPath();
+	        if (selectedPath != null) {
+	            DefaultMutableTreeNode selectedNode = (DefaultMutableTreeNode) selectedPath.getLastPathComponent();
+	            File file = (File) selectedNode.getUserObject();
+	            return new FileTransferable(file, isCutFile); // Créer un objet transférable pour le fichier
+	        }
+	        return null;
+	    }
+
+	    @Override
+	    protected void exportDone(JComponent source, Transferable data, int action) {
+	        if (action == MOVE && isCutFile) {
+	            // Supprimer le fichier source si un déplacement a été fait
+	            try {
+	                List<File> files = (List<File>) data.getTransferData(DataFlavor.javaFileListFlavor);
+	                files.get(0).delete();
+	                refreshTree(); // Mettre à jour l'arborescence
+	            } catch (Exception ex) {
+	                ex.printStackTrace();
+	            }
+	        }
+	    }
 	}
 
-	// Classe pour le transfert du fichier
-	private class FileTransferable implements Transferable {
-		private final File file;
 
-		public FileTransferable(File file) {
-			this.file = file;
-		}
+    // Classe FileTransferable pour gérer les fichiers copiés
+    private class FileTransferable implements Transferable {
+        private final File file;
+        private final boolean isCut;
 
-		@Override
-		public DataFlavor[] getTransferDataFlavors() {
-			return new DataFlavor[] { DataFlavor.javaFileListFlavor };
-		}
+        public FileTransferable(File file, boolean isCut) {
+            this.file = file;
+            this.isCut = isCut;
+        }
 
-		@Override
-		public boolean isDataFlavorSupported(DataFlavor flavor) {
-			return DataFlavor.javaFileListFlavor.equals(flavor);
-		}
+        @Override
+        public DataFlavor[] getTransferDataFlavors() {
+            return new DataFlavor[]{DataFlavor.javaFileListFlavor};
+        }
 
-		@Override
-		public Object getTransferData(DataFlavor flavor) throws UnsupportedFlavorException, java.io.IOException {
-			return java.util.Collections.singletonList(file); // Renvoie la liste contenant le fichier
-		}
-	}
+        @Override
+        public boolean isDataFlavorSupported(DataFlavor flavor) {
+            return DataFlavor.javaFileListFlavor.equals(flavor);
+        }
+
+        @Override
+        public Object getTransferData(DataFlavor flavor) throws UnsupportedFlavorException, IOException {
+            return Collections.singletonList(file);
+        }
+        
+        public boolean isCut() {
+            return isCut;
+        }
+    }
+
+
+	
 
 	// Classe pour gérer le dépôt (drop) des fichiers avec effet de survol
 	// Modifiez la classe pour mettre à jour le tooltip
@@ -511,8 +573,7 @@ public class DirectoryTreePanel {
 
 	    @Override
 	    public void drop(DropTargetDropEvent dtde) {
-	        // Effectuer les actions nécessaires pour le dépôt et réinitialiser le tooltip
-	        tree.setToolTipText(null);
+	        dtde.acceptDrop(DnDConstants.ACTION_COPY_OR_MOVE); // Accepte les actions de copie ou de déplacement
 
 	        try {
 	            Transferable transferable = dtde.getTransferable();
@@ -520,25 +581,28 @@ public class DirectoryTreePanel {
 	                List<File> droppedFiles = (List<File>) transferable.getTransferData(DataFlavor.javaFileListFlavor);
 	                File droppedFile = droppedFiles.get(0);
 	                TreePath path = tree.getPathForLocation(dtde.getLocation().x, dtde.getLocation().y);
+
 	                if (path != null) {
 	                    DefaultMutableTreeNode destinationNode = (DefaultMutableTreeNode) path.getLastPathComponent();
 	                    File destinationDir = (File) destinationNode.getUserObject();
 	                    if (destinationDir.isDirectory()) {
 	                        File targetFile = new File(destinationDir, droppedFile.getName());
-	                        if (!droppedFile.renameTo(targetFile)) {
-	                            Files.copy(droppedFile.toPath(), targetFile.toPath(), StandardCopyOption.REPLACE_EXISTING);
+	                        if (!droppedFile.equals(targetFile)) {
+	                            if (dtde.getDropAction() == DnDConstants.ACTION_MOVE) {
+	                                Files.move(droppedFile.toPath(), targetFile.toPath(), StandardCopyOption.REPLACE_EXISTING);
+	                            } else {
+	                                Files.copy(droppedFile.toPath(), targetFile.toPath(), StandardCopyOption.REPLACE_EXISTING);
+	                            }
+	                            refreshTree(); // Rafraîchir l'arborescence après le dépôt
 	                        }
-	                        refreshTree();
 	                    }
 	                }
-	                dtde.dropComplete(true);
-	                hoveredNode = null; // Réinitialiser le nœud survolé après le dépôt
-//	                tree.repaint(); // Redessiner pour enlever la couleur du survol
 	            }
 	        } catch (Exception ex) {
-	            dtde.dropComplete(false);
+	            JOptionPane.showMessageDialog(null, "Erreur lors du dépôt du fichier.");
 	        }
 	    }
 	}
+
 
 }

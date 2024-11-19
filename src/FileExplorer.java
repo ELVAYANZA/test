@@ -1,10 +1,16 @@
-import javax.swing.*;
 
 import java.awt.*;
 import java.awt.event.*;
 import java.io.File;
 import java.util.Stack;
 import java.util.prefs.Preferences;
+
+import javax.swing.ImageIcon;
+import javax.swing.JButton;
+import javax.swing.JFrame;
+import javax.swing.JPanel;
+import javax.swing.JSplitPane;
+import javax.swing.JTextField;
 
 public class FileExplorer extends JFrame {
     private JTextField pathField, searchField;
@@ -19,12 +25,15 @@ public class FileExplorer extends JFrame {
     private static final String PREF_WINDOW_WIDTH = "windowWidth";
     private static final String PREF_WINDOW_HEIGHT = "windowHeight";
     private Preferences prefs;
+    private String currentPath;
 
     public FileExplorer() {
         setTitle("Explorateur de Fichiers");
         Dimension screenSize = Toolkit.getDefaultToolkit().getScreenSize();
         setSize(screenSize.width, screenSize.height);
         setDefaultCloseOperation(EXIT_ON_CLOSE);
+        
+        this.currentPath = System.getProperty("user.home");
 
         prefs = Preferences.userNodeForPackage(FileExplorer.class);
         
@@ -124,6 +133,8 @@ public class FileExplorer extends JFrame {
 
     public void setPath(String path) {
         getPathField().setText(path);
+		this.currentPath = path;
+
     }
 
 
@@ -167,5 +178,12 @@ public class FileExplorer extends JFrame {
 	public void setPathField(JTextField pathField) {
 		this.pathField = pathField;
 	}
+
+	public String getCurrentPath() {
+		// TODO Auto-generated method stub
+		return currentPath;
+	}
+	
+	
 
 }
