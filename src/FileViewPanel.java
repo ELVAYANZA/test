@@ -313,6 +313,7 @@ public class FileViewPanel {
 				}
 			});
 
+			// Action du double clique sur les list 
 			table.addMouseListener(new MouseAdapter() {
 				@Override
 				public void mouseClicked(MouseEvent e) {
