@@ -146,6 +146,7 @@ public class FileViewPanel {
 	private void displayFiles(File[] files) {
 		FileSystemView fileSystemView = FileSystemView.getFileSystemView();
 
+		// mode grille
 		if (isGridView) {
 			table.setSelectionMode(ListSelectionModel.MULTIPLE_INTERVAL_SELECTION); // Sélection multiple
 			JPanel gridPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 2, 2));
@@ -266,6 +267,7 @@ public class FileViewPanel {
 			gridScrollPane.setHorizontalScrollBarPolicy(JScrollPane.HORIZONTAL_SCROLLBAR_NEVER);
 			panel.add(gridScrollPane, BorderLayout.CENTER);
 
+			// mode list
 		} else {
 			table.setSelectionMode(ListSelectionModel.MULTIPLE_INTERVAL_SELECTION); // Sélection multiple pour la vue
 																					// liste
