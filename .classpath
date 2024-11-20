@@ -8,5 +8,6 @@
 	<classpathentry kind="src" path="src"/>
 	<classpathentry kind="lib" path="lib/flatlaf-3.5.1.jar"/>
 	<classpathentry kind="lib" path="lib/jMTPe.jar"/>
+	<classpathentry kind="lib" path="lib/flatlaf-3.5.2.jar"/>
 	<classpathentry kind="output" path="bin"/>
 </classpath>
